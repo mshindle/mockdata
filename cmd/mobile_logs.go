@@ -1,11 +1,15 @@
 package cmd
 
 import (
-	"github.com/mshindle/datagen"
+	"encoding/json"
+	"os"
+
+	"github.com/mshindle/mockdata/internal/systems"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/mshindle/mockdata/generators"
+	"github.com/mshindle/datastream"
+	rl "github.com/mshindle/datastream/logger"
 )
 
 // mobileLogsCmd represents the kafka command
@@ -20,15 +24,25 @@ func init() {
 }
 
 func runMobileLogs(cmd *cobra.Command, args []string) error {
-	generator := datagen.GeneratorFunc(
-		func() datagen.Event {
-			e, err := generators.MockMobileLog()
-			if err != nil {
-				log.Error().Err(err).Msg("unable to generate fake data")
-				return nil
-			}
-			return e
-		},
+	// 1. Generator (Sequential & simple)
+	gen := func() *systems.MobileLog {
+		e, err := systems.MockMobileLog()
+		if err != nil {
+			log.Error().Err(err).Msg("generation failed")
+		}
+		return e
+	}
+
+	// 2. Marshaller (JSON)
+	marsh := func(ml *systems.MobileLog) ([]byte, error) {
+		return json.Marshal(ml)
+	}
+
+	engine := datastream.NewEngine[*systems.MobileLog](
+		gen,
+		marsh,
+		rl.Println(os.Stdout),
+		datastream.WithRateLimit[*systems.MobileLog](5.0, 1),
 	)
-	return executeEngine(generator)
+	return runEngine(cmd.Context(), engine)
 }

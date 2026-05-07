@@ -1,10 +1,13 @@
 package cmd
 
 import (
-	"github.com/mshindle/datagen"
-	"github.com/spf13/cobra"
+	"encoding/json"
+	"os"
 
-	"github.com/mshindle/mockdata/generators"
+	"github.com/mshindle/datastream"
+	rl "github.com/mshindle/datastream/logger"
+	"github.com/mshindle/mockdata/internal/chance"
+	"github.com/spf13/cobra"
 )
 
 var crapsCmd = &cobra.Command{
@@ -20,9 +23,11 @@ func init() {
 }
 
 func runCraps(cmd *cobra.Command, args []string) error {
-	c := generators.NewCup(6, 2)
-	g := datagen.GeneratorFunc(func() datagen.Event {
-		return c.Throw()
-	})
-	return executeEngine(g)
+	c := chance.NewCup(chance.Die{Sided: 6}, chance.Die{Sided: 6})
+	gen := datastream.GeneratorFunc[*chance.ThrowResult](func() *chance.ThrowResult { return c.Throw() })
+	marsh := datastream.MarshalFunc[*chance.ThrowResult](func(tr *chance.ThrowResult) ([]byte, error) { return json.Marshal(tr) })
+	sink := rl.Println(os.Stdout)
+	opt := datastream.WithRateLimit[*chance.ThrowResult](5.0, 1)
+	e := datastream.NewEngine[*chance.ThrowResult](gen, marsh, sink, opt)
+	return runEngine(cmd.Context(), e)
 }

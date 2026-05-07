@@ -1,10 +1,10 @@
-package generators
+package systems
 
 import (
-	"encoding/json"
+	"math/rand/v2"
 	"time"
 
-	"github.com/bxcodec/faker/v3"
+	faker "github.com/go-faker/faker/v4"
 )
 
 type MobileLog struct {
@@ -22,21 +22,17 @@ type MobileLog struct {
 	MessageData        string    `json:"message_data" faker:"paragraph"`
 }
 
-func (ml MobileLog) Serialize() ([]byte, error) {
-	return json.Marshal(ml)
-}
-
-func MockMobileLog() (MobileLog, error) {
+func MockMobileLog() (*MobileLog, error) {
 	ml := MobileLog{}
 	if err := faker.FakeData(&ml); err != nil {
-		return ml, err
+		return &ml, err
 	}
 	// generate a random time between now and 1 hour in the past
 	t := time.Now().
 		Add(-1 * time.Hour).
-		Add(time.Duration(random.Intn(3600)) * time.Second)
+		Add(time.Duration(rand.IntN(3600)) * time.Second)
 	ml.RecordedTimestamp = t
-	ml.CollectedTimestamp = t.Add(time.Duration(random.Intn(10)) * time.Second)
+	ml.CollectedTimestamp = t.Add(time.Duration(rand.IntN(10)) * time.Second)
 
-	return ml, nil
+	return &ml, nil
 }
